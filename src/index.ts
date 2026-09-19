@@ -1,4 +1,7 @@
-export type Variables = Record<string, string | number | boolean>;
+export type Variables = Record<
+    string,
+    string | number | boolean | Record<string, string | number | boolean>[]
+>;
 export interface SendEmailInput {
     to: string;
     template: string;
