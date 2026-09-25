@@ -1,9 +1,9 @@
 {
-    "name": "@sendry/sdk",
+    "name": "@sendary/sdk",
     "version": "0.0.1",
     "private": true,
     "type": "module",
-    "description": "Server-side Sendry API client foundation",
+    "description": "Server-side Sendary API client foundation",
     "exports": {
         ".": "./src/index.ts"
     },

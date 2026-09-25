@@ -13,17 +13,17 @@ export interface SendReceipt {
     status: string;
 }
 
-export class SendryError extends Error {
+export class SendaryError extends Error {
     public status: number;
     constructor(status: number) {
-        super(`Sendry API returned HTTP ${status}`);
-        this.name = "SendryError";
+        super(`Sendary API returned HTTP ${status}`);
+        this.name = "SendaryError";
         this.status = status;
     }
 }
 
 /** Server-side only. This package is local source until the SDK is published. */
-export class Sendry {
+export class Sendary {
     private apiKey: string;
     private baseUrl: string;
 
@@ -31,7 +31,7 @@ export class Sendry {
         this.apiKey = apiKey;
         this.baseUrl = baseUrl;
         if (typeof window !== "undefined")
-            throw new Error("Sendry API keys must remain on the server.");
+            throw new Error("Sendary API keys must remain on the server.");
         const url = new URL(baseUrl);
         if (
             !apiKey ||
@@ -70,7 +70,7 @@ export class Sendry {
                 }),
             },
         );
-        if (!response.ok) throw new SendryError(response.status);
+        if (!response.ok) throw new SendaryError(response.status);
         return (await response.json()) as SendReceipt;
     }
 }
