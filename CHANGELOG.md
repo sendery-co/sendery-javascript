@@ -2,4 +2,6 @@
 
 ## 0.1.0
 
-Initial template sending, delivery status, and framework integration release.
+- Send published templates and retrieve delivery status from JavaScript or TypeScript on the server.
+- Prepare requests with an idempotency key and opt in to bounded retries.
+- Inspect API failures through `SenderyError`.

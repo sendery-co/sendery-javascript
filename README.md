@@ -1,43 +1,97 @@
-# Sendery — JavaScript & TypeScript integration
+# Sendery for JavaScript and TypeScript
 
-Send template emails from JavaScript & TypeScript with the Sendery SDK.
+Send published Sendery templates from JavaScript and TypeScript.
 
-MIT licensed. Repository: https://github.com/sendery-co/sendery-javascript
+[Documentation](https://sendery.co/en/docs/javascript) · [API reference](https://sendery.co/en/docs/send-email) · [Changelog](CHANGELOG.md)
 
-Documentation: https://sendery.co/en/docs/javascript
+## Requirements
+
+Node.js 22.12+. The package uses ES module imports and includes TypeScript types.
 
 ## Install
 
-```
+```bash
 npm install @sendery/sdk
 ```
 
-## Install
+## Set up
 
-Node.js 22.12+
+Publish a `welcome` template with `name` and `action_url` variables, and create a [project API key](https://sendery.co/en/docs/authentication). Store it as `SENDERY_API_KEY` on your server. Use the SDK only on the server.
 
-## Server-side only
-
-Read SENDERY_API_KEY from the server environment. Import Sendery from @sendery/sdk. The package includes TypeScript declarations and uses the runtime’s fetch API.
-
-## Handle failures
-
-Catch SenderyError to inspect status, code, errors, and retryAfter. prepare() captures a fixed payload; retry() reuses its generated idempotencyKey. Use get(id) to retrieve status.
-
-## Example
-
+```bash
+export SENDERY_API_KEY="your_project_api_key"
 ```
+
+## Send an email
+
+The response contains the accepted email’s `id` and `status`.
+
+```javascript
 import { Sendery } from '@sendery/sdk';
 
-const sendery = new Sendery(process.env.SENDERY_API_KEY);
+const apiKey = process.env.SENDERY_API_KEY;
+if (!apiKey) throw new Error('Set SENDERY_API_KEY on your server.');
+
+const sendery = new Sendery(apiKey);
+const receipt = await sendery.send({
+  to: 'alex@example.com',
+  template: 'welcome',
+  data: { name: 'Alex', action_url: 'https://example.com/start' },
+});
+
+console.log(receipt.id);
+```
+
+## Retrieve an email
+
+Use the returned ID to [check delivery status](https://sendery.co/en/docs/get-email).
+
+```javascript
+const message = await sendery.get(receipt.id);
+console.log(message.status);
+```
+
+## Retry a send
+
+Use a key such as `welcome-123` for one email, and [keep the payload unchanged on retries](https://sendery.co/en/docs/idempotency). `retry(3)` allows up to three additional attempts for temporary failures; `send()` alone makes one attempt.
+
+```javascript
 const email = sendery.prepare({
   to: 'alex@example.com',
   template: 'welcome',
-  data: { name: 'Alex' },
-});
+  data: { name: 'Alex', action_url: 'https://example.com/start' },
+}, 'welcome-123');
+
 const receipt = await email.retry(3).send();
 ```
 
-## Retries and queues
+## Handle errors
 
-Reuse a prepared email for retries. New requests receive new keys; when reconstructing a request in another process, supply the original key and unchanged data. Keep API keys server-side. Framework mailers send Sendery templates, not arbitrary HTML or attachments.
+Catch the SDK exception to inspect the [status and code](https://sendery.co/en/docs/errors). Retry delays are in seconds. The example uses the prepared `email` from the [retry example above](#retry-a-send).
+
+```javascript
+import { SenderyError } from '@sendery/sdk';
+
+try {
+  const receipt = await email.retry(3).send();
+  console.log(receipt.id);
+} catch (error) {
+  if (error instanceof SenderyError) {
+    console.error(error.status, error.code, error.errors);
+    // error.retryAfter is a delay in seconds, when provided.
+  }
+  throw error;
+}
+```
+
+## Frameworks
+
+Follow the server setup for [Next.js](https://sendery.co/en/docs/next) or [Nuxt](https://sendery.co/en/docs/nuxt).
+
+## More
+
+See [idempotency and retries](https://sendery.co/en/docs/idempotency) for retry conditions, delays, and reusing a key across attempts.
+
+## License
+
+[MIT](LICENSE).
