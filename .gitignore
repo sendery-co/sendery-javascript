@@ -1,0 +1,10 @@
+vendor/
+node_modules/
+dist/
+build/
+target/
+*.egg-info/
+__pycache__/
+.venv/
+.env
+.phpunit.cache/

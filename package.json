@@ -1,13 +1,39 @@
 {
-    "name": "@sendery/sdk",
-    "version": "0.0.1",
-    "private": true,
-    "type": "module",
-    "description": "Server-side Sendery API client foundation",
-    "exports": {
-        ".": "./src/index.ts"
-    },
-    "engines": {
-        "node": ">=22.12.0"
+  "name": "@sendery/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Server-side Sendery template email SDK for JavaScript and TypeScript",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test tests/*.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sendery-co/sendery-javascript.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
