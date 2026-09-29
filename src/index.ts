@@ -2,11 +2,26 @@ export type Variables = Record<
     string,
     string | number | boolean | Record<string, string | number | boolean>[]
 >;
+export interface Attachment {
+    filename: string;
+    /** Standard base64 file content, without a data URL prefix. */
+    content: string;
+    content_type?: string;
+}
+export function attachment(filename: string, bytes: Uint8Array, contentType = "application/octet-stream"): Attachment {
+    if (!bytes.length || bytes.length > 5 * 1024 * 1024)
+        throw new Error("Attachments must contain 1 to 5,242,880 bytes.");
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 8192)
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    return { filename, content: btoa(binary), content_type: contentType };
+}
 export interface SendEmailInput {
     to: string;
     template: string;
     data: Variables;
     locale?: string;
+    attachments?: Attachment[];
 }
 export interface SendReceipt {
     id: string;
@@ -48,6 +63,14 @@ export class PendingEmail {
     constructor(client: Sendery, input: SendEmailInput, key: string) {
         if (!/^[a-zA-Z0-9_.:-]{1,128}$/.test(key))
             throw new Error("Invalid idempotency key.");
+        const files = input.attachments ?? [];
+        const size = files.reduce((sum, file) => {
+            if (!file.content.length || file.content.length > 6990508 || (file.content.length % 4 !== 0 || /[^A-Za-z0-9+/]/.test(file.content.replace(/={1,2}$/, ""))))
+                throw new Error("Provide standard base64 attachment content.");
+            return sum + (file.content.length / 4) * 3 - (file.content.endsWith("==") ? 2 : file.content.endsWith("=") ? 1 : 0);
+        }, 0);
+        if (files.length > 10 || size > 5 * 1024 * 1024)
+            throw new Error("Use at most 10 attachments, up to 5 MB combined.");
         this.client = client;
         this.idempotencyKey = key;
         this.body = JSON.stringify({
@@ -55,6 +78,7 @@ export class PendingEmail {
             template: input.template,
             data: input.data,
             ...(input.locale ? { locale: input.locale } : {}),
+            ...(files.length ? { attachments: files } : {}),
         });
     }
     retry(retries = 3): this {

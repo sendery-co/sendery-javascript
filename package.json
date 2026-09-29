@@ -1,6 +1,6 @@
 {
   "name": "@sendery/sdk",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "description": "Server-side Sendery template email SDK for JavaScript and TypeScript",
   "license": "MIT",

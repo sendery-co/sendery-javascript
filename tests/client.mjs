@@ -65,3 +65,23 @@ test("get retrieves message status and omits idempotency header", async (t) => {
     });
     assert.equal((await new Sendery("key").get("msg")).status, "delivered");
 });
+
+test("attachments freeze with retries and enforce the combined limit", async (t) => {
+    const { attachment } = await import("../dist/index.js");
+    const calls = [];
+    t.mock.method(globalThis, "fetch", async (_, options) => {
+        calls.push(options);
+        return new Response('{"id":"attached","status":"queued"}', { status: 202 });
+    });
+    const bytes = new Uint8Array([0, 1, 255]);
+    const files = [attachment("invoice.pdf", bytes, "application/pdf")];
+    const email = new Sendery("key").prepare({to: "a@example.com", template: "receipt", data: {}, attachments: files});
+    bytes[0] = 99;
+    files[0].content = "changed";
+    await email.send(); await email.send();
+    assert.deepEqual(calls[0], calls[1]);
+    assert.equal(JSON.parse(calls[0].body).attachments[0].content, "AAH/");
+    const limit = attachment("large.pdf", new Uint8Array(5242880));
+    assert.doesNotThrow(() => new Sendery("key").prepare({to: "a@example.com", template: "receipt", data: {}, attachments: [limit]}));
+    assert.throws(() => new Sendery("key").prepare({to: "a@example.com", template: "receipt", data: {}, attachments: [limit, attachment("extra.txt", new Uint8Array([1]))]}));
+});

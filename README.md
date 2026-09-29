@@ -42,6 +42,29 @@ const receipt = await sendery.send({
 console.log(receipt.id);
 ```
 
+## Attachments
+
+Use `attachment()` to create an attachment from file bytes. The helper handles base64 encoding.
+
+Send up to 10 files totaling 5 MB. See the [attachment reference](https://sendery.co/en/docs/send-email#section-5) for supported formats and limits.
+
+```javascript
+import { Sendery, attachment } from '@sendery/sdk';
+import { readFile } from 'node:fs/promises';
+
+const sendery = new Sendery(process.env.SENDERY_API_KEY);
+const file = await readFile('/path/document.pdf');
+
+await sendery.prepare({
+    to: 'alex@example.com',
+    template: 'welcome',
+    data: { name: 'Alex', action_url: 'https://example.com/start' },
+    attachments: [attachment('document.pdf', file, 'application/pdf')],
+}, 'welcome-attachment-123').retry().send();
+```
+
+In Next.js and Nuxt, use this in server-side routes or actions.
+
 ## Retrieve an email
 
 Use the returned ID to [check delivery status](https://sendery.co/en/docs/get-email).
