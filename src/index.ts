@@ -21,6 +21,7 @@ export interface SendEmailInput {
     template: string;
     data: Variables;
     locale?: string;
+    version?: number;
     attachments?: Attachment[];
 }
 export interface SendReceipt {
@@ -57,7 +58,7 @@ export class SenderyError extends Error {
 }
 export class PendingEmail {
     readonly idempotencyKey: string;
-    private readonly body: string;
+    private body: string;
     private readonly client: Sendery;
     private retries = 0;
     constructor(client: Sendery, input: SendEmailInput, key: string) {
@@ -80,6 +81,13 @@ export class PendingEmail {
             ...(input.locale ? { locale: input.locale } : {}),
             ...(files.length ? { attachments: files } : {}),
         });
+        if (input.version !== undefined) this.version(input.version);
+    }
+    version(version: number): this {
+        if (!Number.isSafeInteger(version) || version < 1)
+            throw new Error("Version must be a positive integer.");
+        this.body = JSON.stringify({ ...JSON.parse(this.body), version });
+        return this;
     }
     retry(retries = 3): this {
         if (!Number.isInteger(retries) || retries < 0 || retries > 5)

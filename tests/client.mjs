@@ -18,10 +18,11 @@ test("freezes the payload and retries with the same generated key", async (t) =>
         template: "welcome",
         data: { name: "Original" },
     };
-    const email = new Sendery("key").prepare(input);
+    const email = new Sendery("key").prepare(input).version(3);
     input.data.name = "Changed";
     assert.equal((await email.retry().send()).id, "msg");
     assert.equal(calls[0].options.body, calls[1].options.body);
+    assert.equal(JSON.parse(calls[0].options.body).version, 3);
     assert.equal(
         calls[0].options.headers["Idempotency-Key"],
         email.idempotencyKey,
@@ -84,4 +85,22 @@ test("attachments freeze with retries and enforce the combined limit", async (t)
     const limit = attachment("large.pdf", new Uint8Array(5242880));
     assert.doesNotThrow(() => new Sendery("key").prepare({to: "a@example.com", template: "receipt", data: {}, attachments: [limit]}));
     assert.throws(() => new Sendery("key").prepare({to: "a@example.com", template: "receipt", data: {}, attachments: [limit, attachment("extra.txt", new Uint8Array([1]))]}));
+});
+
+test("version is optional and rejects invalid integers", async (t) => {
+    const bodies = [];
+    t.mock.method(globalThis, "fetch", async (_url, options) => {
+        bodies.push(JSON.parse(options.body));
+        return new Response('{"id":"msg","status":"queued"}', { status: 202 });
+    });
+    const client = new Sendery("key");
+    const input = { to: "a@example.com", template: "welcome", data: {} };
+    await client.send(input);
+    await client.send({ ...input, version: 2 });
+    assert.equal("version" in bodies[0], false);
+    assert.equal(bodies[1].version, 2);
+    for (const value of [0, -1, 1.5, NaN, Infinity, "3", null, true]) {
+        assert.throws(() => client.prepare(input).version(value));
+        assert.throws(() => client.prepare({ ...input, version: value }));
+    }
 });

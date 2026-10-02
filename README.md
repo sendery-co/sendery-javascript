@@ -16,13 +16,15 @@ npm install @sendery/sdk
 
 ## Set up
 
-Publish a `welcome` template with `name` and `action_url` variables, and create a [project API key](https://sendery.co/en/docs/authentication). Store it as `SENDERY_API_KEY` on your server. Use the SDK only on the server.
+Choose a published template and create a [project API key](https://sendery.co/en/docs/authentication). Store the key as `SENDERY_API_KEY` on your server.
 
 ```bash
 export SENDERY_API_KEY="your_project_api_key"
 ```
 
 ## Send an email
+
+Replace `your-template` with your published template’s key and `data` with its variables.
 
 The response contains the accepted email’s `id` and `status`.
 
@@ -35,18 +37,30 @@ if (!apiKey) throw new Error('Set SENDERY_API_KEY on your server.');
 const sendery = new Sendery(apiKey);
 const receipt = await sendery.send({
   to: 'alex@example.com',
-  template: 'welcome',
+  template: 'your-template',
   data: { name: 'Alex', action_url: 'https://example.com/start' },
 });
 
 console.log(receipt.id);
 ```
 
+## Send a specific version
+
+Choose a [published template version](https://sendery.co/en/docs/send-email#section-5) to keep sending it after newer versions are published. By default, Sendery uses the latest version.
+
+```javascript
+const receipt = await sendery.prepare({
+    to: 'alex@example.com',
+    template: 'your-template',
+    data: { name: 'Alex', action_url: 'https://example.com/start' },
+}).version(3).send();
+```
+
 ## Attachments
 
 Use `attachment()` to create an attachment from file bytes. The helper handles base64 encoding.
 
-Send up to 10 files totaling 5 MB. See the [attachment reference](https://sendery.co/en/docs/send-email#section-5) for supported formats and limits.
+Send up to 10 files totaling 5 MB. See the [attachment reference](https://sendery.co/en/docs/send-email#section-6) for supported formats and limits.
 
 ```javascript
 import { Sendery, attachment } from '@sendery/sdk';
@@ -57,10 +71,10 @@ const file = await readFile('/path/document.pdf');
 
 await sendery.prepare({
     to: 'alex@example.com',
-    template: 'welcome',
+    template: 'your-template',
     data: { name: 'Alex', action_url: 'https://example.com/start' },
     attachments: [attachment('document.pdf', file, 'application/pdf')],
-}, 'welcome-attachment-123').retry().send();
+}, 'your-idempotency-key').retry().send();
 ```
 
 In Next.js and Nuxt, use this in server-side routes or actions.
@@ -76,14 +90,14 @@ console.log(message.status);
 
 ## Retry a send
 
-Use a key such as `welcome-123` for one email, and [keep the payload unchanged on retries](https://sendery.co/en/docs/idempotency). `retry(3)` allows up to three additional attempts for temporary failures; `send()` alone makes one attempt.
+Use `retry(3)` for up to three extra attempts after temporary failures. Keep the same [idempotency key and email data](https://sendery.co/en/docs/idempotency) on every attempt.
 
 ```javascript
 const email = sendery.prepare({
   to: 'alex@example.com',
-  template: 'welcome',
+  template: 'your-template',
   data: { name: 'Alex', action_url: 'https://example.com/start' },
-}, 'welcome-123');
+}, 'your-idempotency-key');
 
 const receipt = await email.retry(3).send();
 ```
@@ -113,7 +127,7 @@ Follow the server setup for [Next.js](https://sendery.co/en/docs/next) or [Nuxt]
 
 ## More
 
-See [idempotency and retries](https://sendery.co/en/docs/idempotency) for retry conditions, delays, and reusing a key across attempts.
+Learn how to [retry emails without duplicate sends](https://sendery.co/en/docs/idempotency).
 
 ## License
 
