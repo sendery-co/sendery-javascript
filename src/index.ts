@@ -1,3 +1,30 @@
+export interface EventField {
+    label: string;
+    path: string;
+    type: "text" | "number" | "boolean" | "email" | "url" | "date" | "rows";
+    required?: boolean;
+    /** Use synthetic examples, never customer information. */
+    example?:
+        string | number | boolean | Record<string, string | number | boolean>[];
+}
+export interface EventDefinition {
+    label: string;
+    object: { type: string; label: string };
+    fields: Record<string, EventField>;
+    recipients: Record<
+        string,
+        { label: string; email: string; name?: string; locale?: string }
+    >;
+}
+export interface EventType extends EventDefinition {
+    name: string;
+    verified: boolean;
+    last_received_at: string | null;
+}
+export interface EventTypeReceipt {
+    name: string;
+    verified: boolean;
+}
 export type Variables = Record<
     string,
     string | number | boolean | Record<string, string | number | boolean>[]
@@ -8,7 +35,11 @@ export interface Attachment {
     content: string;
     content_type?: string;
 }
-export function attachment(filename: string, bytes: Uint8Array, contentType = "application/octet-stream"): Attachment {
+export function attachment(
+    filename: string,
+    bytes: Uint8Array,
+    contentType = "application/octet-stream",
+): Attachment {
     if (!bytes.length || bytes.length > 5 * 1024 * 1024)
         throw new Error("Attachments must contain 1 to 5,242,880 bytes.");
     let binary = "";
@@ -56,38 +87,49 @@ export class SenderyError extends Error {
         );
     }
 }
-export class PendingEmail {
+export interface EventInput {
+    name: string;
+    object: { type: string; id: string };
+    correlation_id?: string;
+    data: Record<string, unknown>;
+}
+export interface EventReceipt extends SendReceipt {
+    name?: string;
+    received_at?: string;
+    matched_triggers?: number;
+    environment?: "sandbox" | "live";
+    runs?: {
+        id: string;
+        trigger_id: number;
+        status: string;
+        due_at: string | null;
+        error_code: string | null;
+        actions: {
+            position: number;
+            type: string;
+            status: string;
+            email_id: string | null;
+        }[];
+    }[];
+}
+class PendingRequest<T extends SendReceipt> {
     readonly idempotencyKey: string;
-    private body: string;
-    private readonly client: Sendery;
+    protected body: string;
     private retries = 0;
-    constructor(client: Sendery, input: SendEmailInput, key: string) {
+    private client: Sendery;
+    private endpoint: string;
+    constructor(
+        client: Sendery,
+        input: unknown,
+        key: string,
+        endpoint: string,
+    ) {
         if (!/^[a-zA-Z0-9_.:-]{1,128}$/.test(key))
             throw new Error("Invalid idempotency key.");
-        const files = input.attachments ?? [];
-        const size = files.reduce((sum, file) => {
-            if (!file.content.length || file.content.length > 6990508 || (file.content.length % 4 !== 0 || /[^A-Za-z0-9+/]/.test(file.content.replace(/={1,2}$/, ""))))
-                throw new Error("Provide standard base64 attachment content.");
-            return sum + (file.content.length / 4) * 3 - (file.content.endsWith("==") ? 2 : file.content.endsWith("=") ? 1 : 0);
-        }, 0);
-        if (files.length > 10 || size > 5 * 1024 * 1024)
-            throw new Error("Use at most 10 attachments, up to 5 MB combined.");
-        this.client = client;
         this.idempotencyKey = key;
-        this.body = JSON.stringify({
-            to: input.to,
-            template: input.template,
-            data: input.data,
-            ...(input.locale ? { locale: input.locale } : {}),
-            ...(files.length ? { attachments: files } : {}),
-        });
-        if (input.version !== undefined) this.version(input.version);
-    }
-    version(version: number): this {
-        if (!Number.isSafeInteger(version) || version < 1)
-            throw new Error("Version must be a positive integer.");
-        this.body = JSON.stringify({ ...JSON.parse(this.body), version });
-        return this;
+        this.client = client;
+        this.endpoint = endpoint;
+        this.body = JSON.stringify(input);
     }
     retry(retries = 3): this {
         if (!Number.isInteger(retries) || retries < 0 || retries > 5)
@@ -95,12 +137,12 @@ export class PendingEmail {
         this.retries = retries;
         return this;
     }
-    async send(): Promise<SendReceipt> {
+    async send(): Promise<T> {
         for (let attempt = 0; ; attempt++) {
             try {
-                return await this.client.request(
+                return await this.client.request<T>(
                     "POST",
-                    "/api/v1/emails",
+                    this.endpoint,
                     this.body,
                     this.idempotencyKey,
                 );
@@ -120,6 +162,55 @@ export class PendingEmail {
                 );
             }
         }
+    }
+}
+export class PendingEvent extends PendingRequest<EventReceipt> {
+    constructor(client: Sendery, input: EventInput, key: string) {
+        super(client, input, key, "/api/v1/events");
+    }
+}
+export class PendingEmail extends PendingRequest<SendReceipt> {
+    constructor(client: Sendery, input: SendEmailInput, key: string) {
+        const files = input.attachments ?? [];
+        const size = files.reduce((sum, file) => {
+            if (
+                !file.content.length ||
+                file.content.length > 6990508 ||
+                file.content.length % 4 !== 0 ||
+                /[^A-Za-z0-9+/]/.test(file.content.replace(/={1,2}$/, ""))
+            )
+                throw new Error("Provide standard base64 attachment content.");
+            return (
+                sum +
+                (file.content.length / 4) * 3 -
+                (file.content.endsWith("==")
+                    ? 2
+                    : file.content.endsWith("=")
+                      ? 1
+                      : 0)
+            );
+        }, 0);
+        if (files.length > 10 || size > 5 * 1024 * 1024)
+            throw new Error("Use at most 10 attachments, up to 5 MB combined.");
+        super(
+            client,
+            {
+                to: input.to,
+                template: input.template,
+                data: input.data,
+                ...(input.locale ? { locale: input.locale } : {}),
+                ...(files.length ? { attachments: files } : {}),
+            },
+            key,
+            "/api/v1/emails",
+        );
+        if (input.version !== undefined) this.version(input.version);
+    }
+    version(version: number): this {
+        if (!Number.isSafeInteger(version) || version < 1)
+            throw new Error("Version must be a positive integer.");
+        this.body = JSON.stringify({ ...JSON.parse(this.body), version });
+        return this;
     }
 }
 export class Sendery {
@@ -156,15 +247,52 @@ export class Sendery {
     send(input: SendEmailInput, idempotencyKey?: string): Promise<SendReceipt> {
         return this.prepare(input, idempotencyKey).send();
     }
+    defineEvent(
+        name: string,
+        definition: EventDefinition,
+    ): Promise<EventTypeReceipt> {
+        return this.request(
+            "PUT",
+            `/api/v1/event-types/${encodeURIComponent(name)}`,
+            JSON.stringify(definition),
+        );
+    }
+    async getEventTypes(): Promise<EventType[]> {
+        return (
+            await this.request<{ events: EventType[] }>(
+                "GET",
+                "/api/v1/event-types",
+            )
+        ).events;
+    }
+    event(
+        input: EventInput,
+        idempotencyKey: string = crypto.randomUUID(),
+    ): PendingEvent {
+        return new PendingEvent(this, input, idempotencyKey);
+    }
+    getEvent(id: string): Promise<EventReceipt> {
+        return this.request<EventReceipt>(
+            "GET",
+            `/api/v1/events/${encodeURIComponent(id)}`,
+        );
+    }
+    forgetObject(type: string, id: string): Promise<SendReceipt> {
+        return this.request(
+            "DELETE",
+            "/api/v1/event-objects",
+            JSON.stringify({ type, id }),
+        );
+    }
     get(id: string): Promise<SendReceipt> {
         return this.request("GET", `/api/v1/emails/${encodeURIComponent(id)}`);
     }
-    async request(
+    async request<T = SendReceipt>(
         method: string,
         path: string,
         body?: string,
         key?: string,
-    ): Promise<SendReceipt> {
+    ): Promise<T> {
         let response: Response;
         try {
             response = await fetch(`${this.baseUrl}${path}`, {
@@ -204,8 +332,15 @@ export class Sendery {
                     : undefined,
             );
         }
-        if (typeof data.id !== "string" || typeof data.status !== "string")
-            throw new SenderyError(0, "invalid_response");
+        const valid =
+            path === "/api/v1/event-types"
+                ? Array.isArray(data.events)
+                : path.startsWith("/api/v1/event-types/")
+                  ? typeof data.name === "string" &&
+                    typeof data.verified === "boolean"
+                  : typeof data.id === "string" &&
+                    typeof data.status === "string";
+        if (!valid) throw new SenderyError(0, "invalid_response");
         return data;
     }
 }
