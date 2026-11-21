@@ -133,7 +133,7 @@ Learn how to [retry emails without duplicate sends](https://sendery.co/en/docs/i
 
 [MIT](LICENSE).
 
-## Events and triggers
+## Events and workflows
 
 Send events such as account signups or orders from your app. Your team can use them to automate emails in Sendery, choosing the content, recipients, and timing. Available on all plans.
 
@@ -147,4 +147,4 @@ const receipt = await sendery.event({
 }).retry().send();
 ```
 
-Retries reuse the same event data and idempotency key. To retry across jobs or process restarts, supply and persist your own key. A successful response confirms that Sendery accepted the event. [Learn what you can automate with triggers](https://sendery.co/en/docs/build-trigger).
+Retries reuse the same event data and idempotency key. To retry across jobs or process restarts, supply and persist your own key. A successful response confirms that Sendery accepted the event. [Learn what you can automate with workflows](https://sendery.co/en/docs/build-workflow).

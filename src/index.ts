@@ -96,11 +96,11 @@ export interface EventInput {
 export interface EventReceipt extends SendReceipt {
     name?: string;
     received_at?: string;
-    matched_triggers?: number;
+    matched_workflows?: number;
     environment?: "sandbox" | "live";
     runs?: {
         id: string;
-        trigger_id: number;
+        workflow_id: number;
         status: string;
         due_at: string | null;
         error_code: string | null;

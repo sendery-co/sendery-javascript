@@ -138,11 +138,11 @@ test("event retries preserve nested data and use the event endpoints", async (t)
                 name: "listing.created",
                 received_at: "2026-11-21T00:00:00+00:00",
                 environment: "sandbox",
-                matched_triggers: 1,
+                matched_workflows: 1,
                 runs: [
                     {
                         id: "run",
-                        trigger_id: 4,
+                        workflow_id: 4,
                         status: "completed",
                         due_at: null,
                         error_code: null,
@@ -164,7 +164,7 @@ test("event retries preserve nested data and use the event endpoints", async (t)
                   headers: { "Retry-After": "0" },
               })
             : new Response(
-                  '{"id":"event","status":"accepted","matched_triggers":2}',
+                  '{"id":"event","status":"accepted","matched_workflows":2}',
                   { status: 202 },
               );
     });
@@ -176,7 +176,7 @@ test("event retries preserve nested data and use the event endpoints", async (t)
     };
     const event = client.event(input);
     input.data.owner.email = "changed@example.com";
-    assert.equal((await event.retry().send()).matched_triggers, 2);
+    assert.equal((await event.retry().send()).matched_workflows, 2);
     assert.equal(calls[0].url, "https://sendery.co/api/v1/events");
     assert.equal(calls[0].options.body, calls[1].options.body);
     assert.equal(
