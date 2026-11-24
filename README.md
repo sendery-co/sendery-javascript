@@ -36,9 +36,9 @@ if (!apiKey) throw new Error('Set SENDERY_API_KEY on your server.');
 
 const sendery = new Sendery(apiKey);
 const receipt = await sendery.send({
-  to: 'alex@example.com',
+  to: 'steven@example.com',
   template: 'your-template',
-  data: { name: 'Alex', action_url: 'https://example.com/start' },
+  data: { name: 'Steven', action_url: 'https://example.com/start' },
 });
 
 console.log(receipt.id);
@@ -50,9 +50,9 @@ Choose a [published template version](https://sendery.co/en/docs/send-email#sect
 
 ```javascript
 const receipt = await sendery.prepare({
-    to: 'alex@example.com',
+    to: 'steven@example.com',
     template: 'your-template',
-    data: { name: 'Alex', action_url: 'https://example.com/start' },
+    data: { name: 'Steven', action_url: 'https://example.com/start' },
 }).version(3).send();
 ```
 
@@ -70,9 +70,9 @@ const sendery = new Sendery(process.env.SENDERY_API_KEY);
 const file = await readFile('/path/document.pdf');
 
 await sendery.prepare({
-    to: 'alex@example.com',
+    to: 'steven@example.com',
     template: 'your-template',
-    data: { name: 'Alex', action_url: 'https://example.com/start' },
+    data: { name: 'Steven', action_url: 'https://example.com/start' },
     attachments: [attachment('document.pdf', file, 'application/pdf')],
 }, 'your-idempotency-key').retry().send();
 ```
@@ -94,9 +94,9 @@ Use `retry(3)` for up to three extra attempts after temporary failures. Keep the
 
 ```javascript
 const email = sendery.prepare({
-  to: 'alex@example.com',
+  to: 'steven@example.com',
   template: 'your-template',
-  data: { name: 'Alex', action_url: 'https://example.com/start' },
+  data: { name: 'Steven', action_url: 'https://example.com/start' },
 }, 'your-idempotency-key');
 
 const receipt = await email.retry(3).send();
@@ -143,7 +143,7 @@ Start with [Connecting your application](https://sendery.co/en/docs/connect-even
 const receipt = await sendery.event({
   name: "account.created",
   object: { type: "account", id: "842" },
-  data: { email: "alex@example.com", name: "Alex" },
+  data: { email: "steven@example.com", name: "Steven" },
 }).retry().send();
 ```
 

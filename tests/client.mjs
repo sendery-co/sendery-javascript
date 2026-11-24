@@ -172,7 +172,7 @@ test("event retries preserve nested data and use the event endpoints", async (t)
     const input = {
         name: "listing.created",
         object: { type: "listing", id: "42" },
-        data: { owner: { email: "alex@example.com" } },
+        data: { owner: { email: "steven@example.com" } },
     };
     const event = client.event(input);
     input.data.owner.email = "changed@example.com";
@@ -185,7 +185,7 @@ test("event retries preserve nested data and use the event endpoints", async (t)
     );
     assert.equal(
         JSON.parse(calls[0].options.body).data.owner.email,
-        "alex@example.com",
+        "steven@example.com",
     );
     const result = await client.getEvent("event/id");
     assert.equal(result.name, "listing.created");
