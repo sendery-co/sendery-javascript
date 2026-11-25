@@ -22,6 +22,19 @@ Choose a published template and create a [project API key](https://sendery.co/en
 export SENDERY_API_KEY="your_project_api_key"
 ```
 
+## Development and staging
+
+Use a **Sandbox** API key for development and staging. Sendery prevents email and workflow delivery from that key, even when the project is live. Production requires a **Live** key and live sending enabled on the project. Keep keys on the server. Test event-definition changes in a separate sandbox project.
+
+To get a published template’s content without sending or saving an email:
+
+```ts
+const content = await sendery.render({ template: 'welcome', data: { name: 'Steven' } });
+// content.subject, content.html, content.text
+```
+
+Rendering is limited to 10 requests per minute per workspace and 100 / 1,000 / 5,000 / 10,000 per calendar month on Free / Starter / Business / Scale or Enterprise. Render errors stop delivery.
+
 ## Send an email
 
 Replace `your-template` with your published template’s key and `data` with its variables.
@@ -66,7 +79,10 @@ Send up to 10 files totaling 5 MB. See the [attachment reference](https://sender
 import { Sendery, attachment } from '@sendery/sdk';
 import { readFile } from 'node:fs/promises';
 
-const sendery = new Sendery(process.env.SENDERY_API_KEY);
+const apiKey = process.env.SENDERY_API_KEY;
+if (!apiKey) throw new Error('Set SENDERY_API_KEY on your server.');
+
+const sendery = new Sendery(apiKey);
 const file = await readFile('/path/document.pdf');
 
 await sendery.prepare({

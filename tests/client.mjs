@@ -229,3 +229,51 @@ test("event definitions validate catalog responses without weakening email recei
         (error) => error.code === "invalid_response",
     );
 });
+
+test("renders without delivery and preserves sandbox credentials", async (t) => {
+    t.mock.method(globalThis, "fetch", async (url, options) => {
+        assert.equal(url, "https://sendery.co/api/v1/emails/render");
+        assert.equal(options.headers.Authorization, "Bearer snd_sandbox_test");
+        assert.equal(options.headers["Idempotency-Key"], undefined);
+        assert.deepEqual(JSON.parse(options.body), {
+            template: "welcome",
+            data: { name: "Steven" },
+            locale: "ja",
+            version: 2,
+        });
+        return Response.json({
+            subject: "Hello",
+            html: "<p>Hello</p>",
+            text: "Hello",
+        });
+    });
+    assert.equal(
+        (
+            await new Sendery("snd_sandbox_test").render({
+                template: "welcome",
+                data: { name: "Steven" },
+                locale: "ja",
+                version: 2,
+            })
+        ).text,
+        "Hello",
+    );
+});
+
+test("render rejects incomplete content and reports quota errors", async (t) => {
+    const mock = t.mock.method(globalThis, "fetch", async () =>
+        Response.json({ html: "body" }),
+    );
+    const client = new Sendery("key");
+    await assert.rejects(
+        client.render({ template: "welcome", data: {} }),
+        (e) => e.code === "invalid_response",
+    );
+    mock.mock.mockImplementation(async () =>
+        Response.json({ code: "render_limit_exceeded" }, { status: 429 }),
+    );
+    await assert.rejects(
+        client.render({ template: "welcome", data: {} }),
+        (e) => e.code === "render_limit_exceeded" && !e.retryable,
+    );
+});

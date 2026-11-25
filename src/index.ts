@@ -55,9 +55,19 @@ export interface SendEmailInput {
     version?: number;
     attachments?: Attachment[];
 }
+export type RenderEmailInput = Pick<
+    SendEmailInput,
+    "template" | "data" | "locale" | "version"
+>;
+export interface RenderedEmail {
+    subject: string;
+    html: string;
+    text: string;
+}
 export interface SendReceipt {
     id: string;
     status: string;
+    sandbox_url?: string;
     error_code?: string | null;
     created_at?: string;
     submitted_at?: string | null;
@@ -247,6 +257,19 @@ export class Sendery {
     send(input: SendEmailInput, idempotencyKey?: string): Promise<SendReceipt> {
         return this.prepare(input, idempotencyKey).send();
     }
+    render(input: RenderEmailInput): Promise<RenderedEmail> {
+        if (
+            input.version !== undefined &&
+            (!Number.isSafeInteger(input.version) || input.version < 1)
+        )
+            throw new Error("Version must be a positive integer.");
+        const { template, data, locale, version } = input;
+        return this.request<RenderedEmail>(
+            "POST",
+            "/api/v1/emails/render",
+            JSON.stringify({ template, data, locale, version }),
+        );
+    }
     defineEvent(
         name: string,
         definition: EventDefinition,
@@ -333,13 +356,17 @@ export class Sendery {
             );
         }
         const valid =
-            path === "/api/v1/event-types"
-                ? Array.isArray(data.events)
-                : path.startsWith("/api/v1/event-types/")
-                  ? typeof data.name === "string" &&
-                    typeof data.verified === "boolean"
-                  : typeof data.id === "string" &&
-                    typeof data.status === "string";
+            path === "/api/v1/emails/render"
+                ? ["subject", "html", "text"].every(
+                      (field) => typeof data[field] === "string",
+                  )
+                : path === "/api/v1/event-types"
+                  ? Array.isArray(data.events)
+                  : path.startsWith("/api/v1/event-types/")
+                    ? typeof data.name === "string" &&
+                      typeof data.verified === "boolean"
+                    : typeof data.id === "string" &&
+                      typeof data.status === "string";
         if (!valid) throw new SenderyError(0, "invalid_response");
         return data;
     }
