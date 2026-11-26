@@ -171,6 +171,7 @@ test("event retries preserve nested data and use the event endpoints", async (t)
     const client = new Sendery("key");
     const input = {
         name: "listing.created",
+        language: "ja",
         object: { type: "listing", id: "42" },
         data: { owner: { email: "steven@example.com" } },
     };
@@ -187,6 +188,7 @@ test("event retries preserve nested data and use the event endpoints", async (t)
         JSON.parse(calls[0].options.body).data.owner.email,
         "steven@example.com",
     );
+    assert.equal(JSON.parse(calls[0].options.body).language, "ja");
     const result = await client.getEvent("event/id");
     assert.equal(result.name, "listing.created");
     assert.equal(result.received_at, "2026-11-21T00:00:00+00:00");
@@ -212,8 +214,9 @@ test("event definitions validate catalog responses without weakening email recei
             await client.defineEvent("document.signed", {
                 label: "Document signed",
                 object: { type: "document", label: "Document" },
-                fields: {},
-                recipients: {},
+                fields: {
+                    email: { label: "Email", path: "email", type: "email" },
+                },
             })
         ).verified,
         false,

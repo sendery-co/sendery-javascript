@@ -11,10 +11,7 @@ export interface EventDefinition {
     label: string;
     object: { type: string; label: string };
     fields: Record<string, EventField>;
-    recipients: Record<
-        string,
-        { label: string; email: string; name?: string; locale?: string }
-    >;
+    description?: string;
 }
 export interface EventType extends EventDefinition {
     name: string;
@@ -101,6 +98,7 @@ export interface EventInput {
     name: string;
     object: { type: string; id: string };
     correlation_id?: string;
+    language?: string;
     data: Record<string, unknown>;
 }
 export interface EventReceipt extends SendReceipt {
