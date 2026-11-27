@@ -153,7 +153,7 @@ Learn how to [retry emails without duplicate sends](https://sendery.co/en/docs/i
 
 Send events such as account signups or orders from your app. Your team can use them to automate emails in Sendery, choosing the content, recipients, and timing. Available on all plans.
 
-Start with [Connecting your application](https://sendery.co/en/docs/connect-events) to define the data Sendery can expect, then [send events](https://sendery.co/en/docs/send-events) as they happen. Define at least one email address field and include an address when sending events.
+Start with [Register event definitions](https://sendery.co/en/docs/register-event-definitions) to define the data Sendery can expect, then [send events](https://sendery.co/en/docs/send-events) as they happen. Define at least one email address field and include an address when sending events.
 
 ```typescript
 const receipt = await sendery.event({
